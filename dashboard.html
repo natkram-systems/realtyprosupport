@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MMJ GREENLAND - Realty Pro Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+     * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/8/83/Farmland_in_Philippines.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: #333;
+    }
+    .sidebar {
+      width: 220px;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: rgba(46, 125, 50, 0.95);
+      color: white;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar h2 {
+      margin-bottom: 30px;
+      font-size: 20px;
+      text-align: center;
+    }
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      margin-bottom: 15px;
+      display: block;
+      font-weight: bold;
+    }
+    .content {
+      margin-left: 220px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
+    }
+    canvas {
+      width: 100% !important;
+      height: 300px !important;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background-color: #f9f9f9;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    @media (max-width: 600px) {
+      .content {
+        margin-left: 0;
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .sidebar a {
+        margin-right: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+   <div class="sidebar">
+    <h2>MMJ GREENLAND [Realty Pro]</h2>
+    <a href="logout.php">Logout</a>
+    <a href="account.html">Account Management</a>
+    <a href="export_csv.php">Export Report</a>
+  </div>
+  <div class="content">
+    <div class="card"><h3>Daily Sales</h3><canvas id="dailySalesChart"></canvas></div>
+    <div class="card"><h3>Weekly Sales</h3><canvas id="weeklySalesChart"></canvas></div>
+    <div class="card"><h3>Monthly Sales</h3><canvas id="monthlySalesChart"></canvas></div>
+    <div class="card">
+      <h3>Recent Sales Summary</h3>
+      <table>
+        <thead><tr><th>Contract #</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    fetch('fetch_sales.php')
+      .then(res => res.json())
+      .then(data => {
+        const updateChart = (id, type, dataset, labels, color) => {
+          const ctx = document.getElementById(id).getContext('2d');
+          new Chart(ctx, {
+            type: type,
+            data: {
+              labels: labels,
+              datasets: [{
+                label: '₱ Sales',
+                data: dataset,
+                backgroundColor: type === 'pie' ? color : color + 'cc',
+                borderColor: color,
+                borderWidth: 2,
+                tension: 0.4,
+                fill: type !== 'pie'
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { display: type === 'pie' },
+                tooltip: { mode: 'index', intersect: false }
+              },
+              scales: type !== 'pie' ? {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true }
+              } : {}
+            }
+          });
+        };
+
+        updateChart('dailySalesChart', 'bar',
+          data.daily.map(row => parseFloat(row.total)),
+          data.daily.map(row => row.period),
+          '#43a047');
+
+        updateChart('weeklySalesChart', 'line',
+          data.weekly.map(row => parseFloat(row.total)),
+          data.weekly.map(row => row.period),
+          '#1b5e20');
+
+        updateChart('monthlySalesChart', 'pie',
+          data.monthly.map(row => parseFloat(row.total)),
+          data.monthly.map(row => row.period),
+          ['#81c784', '#66bb6a', '#43a047', '#1b5e20', '#2e7d32']);
+
+        const tableBody = document.querySelector('table tbody');
+        tableBody.innerHTML = '';
+        data.summary.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${row.contract_number}</td><td>₱${row.amount_paid}</td><td>₱${row.balance}</td><td>${row.contract_status}</td>`;
+          tableBody.appendChild(tr);
+        });
+      });
+  </script>
+  </body>
+     <footer style="background: rgba(0, 0, 0, 0.7); color: white; padding: 10px; text-align: center; position: fixed; bottom: 0; width: 100%;">
+  <p>Page rendered in <span id="render-time"></span> seconds | 
+    <span id="current-time"></span></p>
+  <p>Powered by <strong>Natkram-Systems</strong></p>
+</footer>
+
+<script>
+  // Display current date and time
+  const currentTime = new Date().toLocaleString();
+  document.getElementById('current-time').textContent = currentTime;
+
+  // Calculate page render time
+  window.onload = function() {
+    const renderTime = ((performance.now() - window.performance.timing.navigationStart) / 1000).toFixed(3);
+    document.getElementById('render-time').textContent = renderTime;
+  };
+</script>
+  </html>
