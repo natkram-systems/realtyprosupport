@@ -14,17 +14,8 @@ if (isset($_SESSION['name']) && $_SESSION['name'] === 'Guest') {
 }
 
 
-// Database configuration
-$host = "sql111.cpanelfree.com";
-$user = "cpfr_38871729";
-$pass = "Kbl@0205";
-$db   = "cpfr_38871729_ims_cloud";
-
-// Connect to MySQL
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
-}
+// Database connection (shared helper)
+require_once 'config.php';
 
 // Fetch sales data
 $sql = "SELECT DATE(date_sold) as sale_date, 

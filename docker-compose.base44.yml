@@ -1,0 +1,50 @@
+# Development environment for the MMJ Greenland PHP app.
+# The app source is bind-mounted into the web container, so edits show up on the
+# next request without rebuilding the image.
+services:
+  db:
+    image: mysql:8.0
+    restart: on-failure
+    environment:
+      - MYSQL_ROOT_PASSWORD=mmj_root_pw
+      - MYSQL_DATABASE=ims_cloud
+      - MYSQL_USER=mmj
+      - MYSQL_PASSWORD=mmj_dev_pw
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ummj", "-pmmj_dev_pw"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.base44
+    restart: on-failure
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - DB_HOST=db
+      - DB_NAME=ims_cloud
+      - DB_USER=mmj
+      - DB_PASS=mmj_dev_pw
+    ports:
+      - "3000:3000"
+    command: ["php", "-S", "0.0.0.0:3000", "-t", "/app"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:3000/index.php') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  db_data:

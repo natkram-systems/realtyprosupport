@@ -1,0 +1,10 @@
+# Development runtime for the PHP app. Source is bind-mounted by compose, so this
+# image only provides the interpreter and the MySQL extensions the app needs.
+FROM php:8.2-cli
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
+    && docker-php-ext-install -j"$(nproc)" mysqli \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
